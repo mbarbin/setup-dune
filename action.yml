@@ -6,13 +6,10 @@ inputs:
     description: "Whether to run automatically all the standard lock, build, test steps"
     required: false
     default: "false"
-<<<<<<< HEAD
   install-depexts:
     description: "Whether to automatically install system dependencies (depexts) using `dune show depexts`."
     required: false
     default: "false"
-=======
->>>>>>> 812ea92a860a5fe4a05e8438d33c58bf4524bc53
 outputs:
   dune-cache-hit:
     description: "A boolean value to indicate the Dune cache was found in the GHA cache"
