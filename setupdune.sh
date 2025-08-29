@@ -15,13 +15,15 @@ lock() {
   (set -x; cd "$SETUPDUNEDIR" && dune pkg lock)
 }
 
-update-depexts() {
-  case "$OS" in
-    Linux)
+lazy-update-depexts() {
+  case "$OS,$STEPS" in
+    Linux,*lazy-update-depexts*)
       (set -x; sudo apt-get update)
+      STEPS="${STEPS//lazy-update-depexts/}"
       ;;
-    macOS)
+    macOS,*lazy-update-depexts*)
       (set -x; brew update)
+      STEPS="${STEPS//lazy-update-depexts/}"
       ;;
   esac
 }
@@ -33,11 +35,11 @@ install-depexts() {
     *,) # No depexts to install
       ;;
     Linux,*)
-      update-depexts
+      lazy-update-depexts
       (set -x; sudo apt-get install -y $DEPEXTS)
       ;;
     macOS,*)
-      update-depexts
+      lazy-update-depexts
       (set -x; brew install $DEPEXTS)
       ;;
   esac
@@ -56,7 +58,7 @@ expand_steps() {
     "")
       case "$SETUPDUNEAUTOMAGIC" in
         true)
-          STEPS="install-dune lock install-depexts build runtest"
+          STEPS="install-dune lock lazy-update-depexts install-depexts build runtest"
           ;;
         *)
           STEPS="install-dune"
