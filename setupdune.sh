@@ -110,6 +110,10 @@ install-depexts() {
   esac
 }
 
+build-deps() {
+  dune_aux build @pkg-install
+}
+
 build() {
   dune_aux build
 }
@@ -121,10 +125,10 @@ runtest() {
 expand_steps() {
   case "$OS,$SETUPDUNESTEPS" in
     "macOS,all")
-      STEPS="install-dune enable-pkg lazy-update-depexts install-gpatch install-depexts build runtest"
+      STEPS="install-dune enable-pkg lazy-update-depexts install-gpatch install-depexts build-deps build runtest"
       ;;
     "Linux,all")
-      STEPS="install-dune enable-pkg lazy-update-depexts install-depexts build runtest"
+      STEPS="install-dune enable-pkg lazy-update-depexts install-depexts build-deps build runtest"
       ;;
     "macOS,"|"Linux,")
       STEPS="install-dune"
@@ -152,6 +156,7 @@ main() {
   w "Enable dune package management" enable-pkg
   w "Install GNU patch on macOS" install-gpatch
   w "Install the external dependencies" install-depexts
+  w "Build the dependencies" build-deps
   w "Build the project" build
   w "Run the test" runtest
 }
