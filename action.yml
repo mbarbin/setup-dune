@@ -38,7 +38,7 @@ runs:
         echo "DUNE_CACHE_ROOT=$HOME/.cache/dune" >> "$GITHUB_ENV"
         echo "BUILDDIR=$PWD/$SETUPDUNEDIR/_build" >> "$GITHUB_ENV"
     - name: Cache dune’s cache and build artefacts
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: dune-cache
       with:
         path: |
