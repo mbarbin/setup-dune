@@ -44,7 +44,14 @@ runs:
       run: |
         echo "$HOME/.local/bin" >> "$GITHUB_PATH"
         echo "DUNE_CACHE_ROOT=$HOME/.cache/dune" >> "$GITHUB_ENV"
-        echo "BUILDDIR=$(realpath -m "$PWD/$SETUPDUNEDIR/_build")" >> "$GITHUB_ENV"
+        case "$SETUPDUNEDIR" in
+          .|./)
+            echo "BUILDDIR=$PWD/_build" >> "$GITHUB_ENV"
+            ;;
+          *)
+            echo "BUILDDIR=$PWD/$SETUPDUNEDIR/_build" >> "$GITHUB_ENV"
+            ;;
+        esac
     - name: Cache dune’s cache and build artefacts
       uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
       id: dune-cache
