@@ -29,15 +29,16 @@ jobs:
 
 ## Inputs
 
-| Key            | Meaning                                                         | Default value           |
-| -------------- | --------------------------------------------------------------- | ----------------------- |
-| `version`      | version of dune to use                                          | `nightly`               |
-| `steps`        | which steps should be run                                       | `all`                   |
-| `directory`    | where is the project that should be built and tested            | current directory (`.`) |
-| `workspace`    | argument for the `--workspace` option (relative to `directory`) | Dune’s default          |
-| `display`      | argument for the `--display` option                             | Dune’s default          |
-| `only-packages` | argument for the `--only-packages` option (comma-separated)    | Dune’s default          |
-| `cache-prefix` | prefix for the GitHub Action cache keys                         | `v1`                    |
+| Key              | Meaning                                                         | Default value           |
+| ---------------- | --------------------------------------------------------------- | ----------------------- |
+| `version`        | version of dune to use                                          | `nightly`               |
+| `steps`          | which steps should be run                                       | `all`                   |
+| `directory`      | where is the project that should be built and tested            | current directory (`.`) |
+| `workspace`      | argument for the `--workspace` option (relative to `directory`) | Dune’s default          |
+| `display`        | argument for the `--display` option                             | Dune’s default          |
+| `only-packages`  | argument for the `--only-packages` option (comma-separated)     | Dune’s default          |
+| `cache-prefix`   | prefix for the GitHub Action cache keys                         | `v1`                    |
+| `cache-readonly` | restore cache but do not save it (see below)                    | `false`                 |
 
 
 ### Details
@@ -75,6 +76,31 @@ It can be useful to set an explicit value for `steps` for instance when:
 - you have a repository with more than one project and you want to trigger
   `setup-dune` more than once but still install dune and run `{apt,brew} update`
   (if needed) only the first time.
+
+#### Read-only cache for pull requests
+
+GitHub Actions caches are scoped: workflows triggered by pull requests can
+restore caches created on the default branch, but not vice versa. Combined with
+GitHub's cache storage limits, this can create problems:
+
+1. PRs run and create their own caches
+2. PR caches accumulate and eventually evict the main branch caches
+3. Concurrent PRs also evict each other's caches
+4. When CI runs on main, the original caches are gone
+5. Main branch CI becomes slow until it rebuilds its cache
+
+In practice, Dune caches can reach 600MB to 1GB. With GitHub's free cache limit
+of 10GB, a repository testing 2-4 OCaml versions only needs a handful of
+concurrent PRs to hit this limit and trigger cache evictions.
+
+Setting `cache-readonly: true` on pull requests allows them to benefit from the
+main branch cache without writing their own, preserving the cache budget:
+
+```yaml
+- uses: ocaml-dune/setup-dune@v2
+  with:
+    cache-readonly: ${{ github.ref != 'refs/heads/main' }}
+```
 
 ## Outputs
 
