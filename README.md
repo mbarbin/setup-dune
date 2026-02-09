@@ -1,8 +1,8 @@
 # `setup-dune`: a GitHub Action to install Dune and optionally build a project with Dune package management
 
-This is the `README.md` for the latest released version of the action. Read
-[`README.dev.md`](README.dev.md) instead for the documentation for this
-development branch.
+The main branch of this repo is used to support ongoing development. Please
+refer to the files checked out at the tag or branch you are searching the
+documentation for.
 
 ## How to use it
 
