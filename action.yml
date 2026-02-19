@@ -26,10 +26,10 @@ inputs:
     description: 'Prefix of the cache keys'
     required: false
     default: v1
-  cache-readonly:
-    description: 'Restore cache but do not save it (useful for PRs to avoid cache eviction)'
+  save-cache:
+    description: 'When to save the cache: onsuccess (default), always (even on failure), or never'
     required: false
-    default: 'false'
+    default: 'onsuccess'
 outputs:
   dune-cache-hit:
     description: 'A boolean value to indicate the Dune cache was found in the GHA cache'
@@ -70,6 +70,8 @@ runs:
           ${{ env.CACHE_RESTORE_KEY_1 }}
           ${{ env.CACHE_RESTORE_KEY_2 }}
     - name: Run the main action script
+      id: build
+      continue-on-error: true
       shell: bash
       env:
         DUNE_CONFIG__PKG_BUILD_PROGRESS: enabled
@@ -83,10 +85,16 @@ runs:
       run: |
         bash "$ACTIONPATH/setupdune.sh"
     - name: Save dune's cache and build artefacts
-      if: inputs.cache-readonly != 'true'
+      if: >-
+        inputs.save-cache == 'always'
+        || (inputs.save-cache == 'onsuccess' && steps.build.outcome == 'success')
       uses: actions/cache/save@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
       with:
         path: |
           ${{ env.DUNE_CACHE_ROOT }}
           ${{ env.BUILDDIR }}
         key: ${{ env.CACHE_KEY }}
+    - name: Propagate build result
+      if: steps.build.outcome == 'failure'
+      shell: bash
+      run: exit 1

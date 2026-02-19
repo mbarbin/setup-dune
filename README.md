@@ -37,7 +37,7 @@ jobs:
 | `workspace`      | argument for the `--workspace` option (relative to `directory`) | Dune’s default          |
 | `display`        | argument for the `--display` option                             | Dune’s default          |
 | `cache-prefix`   | prefix for the GitHub Action cache keys                         | `v1`                    |
-| `cache-readonly` | restore cache but do not save it                                | `false`                 |
+| `save-cache`     | when to save the cache: `onsuccess`, `always`, or `never`       | `onsuccess`             |
 
 
 ### Details
