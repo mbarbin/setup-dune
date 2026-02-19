@@ -41,6 +41,9 @@ runs:
       shell: bash
       env:
         SETUPDUNEDIR: ${{ inputs.directory }}
+        CACHE_KEY: ${{ inputs.cache-prefix }}-dune-${{ inputs.version }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles(format(‘{0}/dune-project’,inputs.directory)) }}-${{ github.sha }}
+        CACHE_RESTORE_KEY_1: ${{ inputs.cache-prefix }}-dune-${{ inputs.version }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles(format(‘{0}/dune-project’,inputs.directory)) }}-
+        CACHE_RESTORE_KEY_2: ${{ inputs.cache-prefix }}-dune-${{ inputs.version }}-${{ runner.os }}-${{ runner.arch }}-
       run: |
         echo "$HOME/.local/bin" >> "$GITHUB_PATH"
         echo "DUNE_CACHE_ROOT=$HOME/.cache/dune" >> "$GITHUB_ENV"
@@ -52,6 +55,9 @@ runs:
             echo "BUILDDIR=$PWD/${SETUPDUNEDIR#./}/_build" >> "$GITHUB_ENV"
             ;;
         esac
+        echo "CACHE_KEY=$CACHE_KEY" >> "$GITHUB_ENV"
+        echo "CACHE_RESTORE_KEY_1=$CACHE_RESTORE_KEY_1" >> "$GITHUB_ENV"
+        echo "CACHE_RESTORE_KEY_2=$CACHE_RESTORE_KEY_2" >> "$GITHUB_ENV"
     - name: Cache dune’s cache and build artefacts
       if: inputs.cache-readonly != 'true'
       uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
@@ -60,10 +66,10 @@ runs:
         path: |
           ${{ env.DUNE_CACHE_ROOT }}
           ${{ env.BUILDDIR }}
-        key: ${{ inputs.cache-prefix }}-dune-${{ inputs.version }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles(format('{0}/dune-project',inputs.directory)) }}-${{ github.sha }}
+        key: ${{ env.CACHE_KEY }}
         restore-keys: |
-          ${{ inputs.cache-prefix }}-dune-${{ inputs.version }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles(format('{0}/dune-project',inputs.directory)) }}-
-          ${{ inputs.cache-prefix }}-dune-${{ inputs.version }}-${{ runner.os }}-${{ runner.arch }}-
+          ${{ env.CACHE_RESTORE_KEY_1 }}
+          ${{ env.CACHE_RESTORE_KEY_2 }}
     - name: Restore dune’s cache and build artefacts (cache-readonly)
       if: inputs.cache-readonly == 'true'
       uses: actions/cache/restore@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
@@ -72,10 +78,10 @@ runs:
         path: |
           ${{ env.DUNE_CACHE_ROOT }}
           ${{ env.BUILDDIR }}
-        key: ${{ inputs.cache-prefix }}-dune-${{ inputs.version }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles(format('{0}/dune-project',inputs.directory)) }}-${{ github.sha }}
+        key: ${{ env.CACHE_KEY }}
         restore-keys: |
-          ${{ inputs.cache-prefix }}-dune-${{ inputs.version }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles(format('{0}/dune-project',inputs.directory)) }}-
-          ${{ inputs.cache-prefix }}-dune-${{ inputs.version }}-${{ runner.os }}-${{ runner.arch }}-
+          ${{ env.CACHE_RESTORE_KEY_1 }}
+          ${{ env.CACHE_RESTORE_KEY_2 }}
     - name: Run the main action script
       shell: bash
       env:
