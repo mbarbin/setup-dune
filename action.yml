@@ -37,6 +37,15 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    - name: Validate inputs
+      if: >-
+        inputs.save-cache != 'onsuccess'
+        && inputs.save-cache != 'always'
+        && inputs.save-cache != 'never'
+      shell: bash
+      run: |
+        echo "::error::Invalid save-cache value '${{ inputs.save-cache }}'. Must be onsuccess, always, or never."
+        exit 1
     - name: Environment setup
       shell: bash
       env:
