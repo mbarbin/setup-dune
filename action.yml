@@ -33,7 +33,7 @@ inputs:
 outputs:
   dune-cache-hit:
     description: 'A boolean value to indicate the Dune cache was found in the GHA cache'
-    value: ${{ steps.dune-cache.outputs.cache-hit || steps.dune-cache-readonly.outputs.cache-hit }}
+    value: ${{ steps.dune-cache-restore.outputs.cache-hit }}
 runs:
   using: 'composite'
   steps:
@@ -58,22 +58,9 @@ runs:
         echo "CACHE_KEY=$CACHE_KEY" >> "$GITHUB_ENV"
         echo "CACHE_RESTORE_KEY_1=$CACHE_RESTORE_KEY_1" >> "$GITHUB_ENV"
         echo "CACHE_RESTORE_KEY_2=$CACHE_RESTORE_KEY_2" >> "$GITHUB_ENV"
-    - name: Cache dune’s cache and build artefacts
-      if: inputs.cache-readonly != 'true'
-      uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
-      id: dune-cache
-      with:
-        path: |
-          ${{ env.DUNE_CACHE_ROOT }}
-          ${{ env.BUILDDIR }}
-        key: ${{ env.CACHE_KEY }}
-        restore-keys: |
-          ${{ env.CACHE_RESTORE_KEY_1 }}
-          ${{ env.CACHE_RESTORE_KEY_2 }}
-    - name: Restore dune’s cache and build artefacts (cache-readonly)
-      if: inputs.cache-readonly == 'true'
+    - name: Restore dune’s cache and build artefacts
       uses: actions/cache/restore@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
-      id: dune-cache-readonly
+      id: dune-cache-restore
       with:
         path: |
           ${{ env.DUNE_CACHE_ROOT }}
@@ -95,3 +82,11 @@ runs:
         ACTIONPATH: ${{ github.action_path }}
       run: |
         bash "$ACTIONPATH/setupdune.sh"
+    - name: Save dune's cache and build artefacts
+      if: inputs.cache-readonly != 'true'
+      uses: actions/cache/save@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
+      with:
+        path: |
+          ${{ env.DUNE_CACHE_ROOT }}
+          ${{ env.BUILDDIR }}
+        key: ${{ env.CACHE_KEY }}
