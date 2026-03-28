@@ -34,6 +34,10 @@ inputs:
     description: 'Restore cache but do not save it (useful for PRs to avoid cache eviction)'
     required: false
     default: 'false'
+  dune-digest:
+    description: 'Expected sha256 digest of the dune binary for integrity verification (e.g., sha256:abc123...)'
+    required: false
+    default: ''
   traces-as-artifact:
     description: 'Whether the Dune traces should be uploaded as artifact (on-failure (default), always, or never)'
     required: false
@@ -49,6 +53,8 @@ runs:
       shell: bash
       env:
         SETUPDUNEDIR: ${{ inputs.directory }}
+        SETUPDUNEVERSION: ${{ inputs.version }}
+        SETUPDUNEDIGEST: ${{ inputs.dune-digest }}
       run: |
         echo "$HOME/.local/bin" >> "$GITHUB_PATH"
         echo "DUNE_CACHE_ROOT=$HOME/.cache/dune" >> "$GITHUB_ENV"
@@ -60,6 +66,22 @@ runs:
             echo "BUILDDIR=$PWD/${SETUPDUNEDIR#./}/_build" >> "$GITHUB_ENV"
             ;;
         esac
+        # Enable dune binary caching for stable versions with a digest
+        DUNE_BINARY_CACHE=false
+        if [ -n "$SETUPDUNEDIGEST" ]; then
+          case "$SETUPDUNEVERSION" in
+            nightly|dev|latest) ;;
+            *) DUNE_BINARY_CACHE=true ;;
+          esac
+        fi
+        echo "DUNE_BINARY_CACHE=$DUNE_BINARY_CACHE" >> "$GITHUB_ENV"
+    - name: Cache dune binary
+      if: env.DUNE_BINARY_CACHE == 'true'
+      uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
+      id: dune-binary-cache
+      with:
+        path: ~/.local/bin/dune
+        key: dune-binary-${{ inputs.version }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.dune-digest }}
     - name: Cache dune’s cache and build artefacts
       if: inputs.cache-readonly != 'true'
       uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
@@ -94,6 +116,8 @@ runs:
         SETUPDUNEDISPLAY: ${{ inputs.display }}
         SETUPDUNEONLYPACKAGES: ${{ inputs.only-packages }}
         SETUPDUNESTEPS: ${{ inputs.steps }}
+        SETUPDUNEDIGEST: ${{ inputs.dune-digest }}
+        SETUPDUNEBINARYCACHEHIT: ${{ steps.dune-binary-cache.outputs.cache-hit }}
         OS: ${{ runner.os }}
         ACTIONPATH: ${{ github.action_path }}
       run: |

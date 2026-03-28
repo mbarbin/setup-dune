@@ -38,55 +38,60 @@ dune_aux() {
 }
 
 install-dune() {
-  case "$SETUPDUNEVERSION" in
-    nightly|dev|latest)
-      # Use the upstream installer for non-stable versions
-      case "$SETUPDUNEVERSION" in
-        nightly|dev)
-          explicit=
-          ;;
-        latest)
-          explicit=y
-          ;;
-      esac
-      (set -x;
-        curl -fsSL https://get.dune.build/install | \
-          sh -s ${explicit:+-- --release "$SETUPDUNEVERSION"}
-        command -v dune
-        dune --version)
-      ;;
-    *)
-      # For explicit stable versions, download directly without the installer
-      case "$(uname -ms)" in
-        'Darwin x86_64')
-          target=x86_64-apple-darwin
-          ;;
-        'Darwin arm64')
-          target=aarch64-apple-darwin
-          ;;
-        'Linux x86_64')
-          target=x86_64-unknown-linux-musl
-          ;;
-        *)
-          abort "Unsupported platform: $(uname -ms)"
-          ;;
-      esac
+  if [ "${SETUPDUNEBINARYCACHEHIT:-}" = "true" ]; then
+    echo "Dune binary restored from cache"
+    (set -x; command -v dune; dune --version)
+  else
+    case "$SETUPDUNEVERSION" in
+      nightly|dev|latest)
+        # Use the upstream installer for non-stable versions
+        case "$SETUPDUNEVERSION" in
+          nightly|dev)
+            explicit=
+            ;;
+          latest)
+            explicit=y
+            ;;
+        esac
+        (set -x;
+          curl -fsSL https://get.dune.build/install | \
+            sh -s ${explicit:+-- --release "$SETUPDUNEVERSION"}
+          command -v dune
+          dune --version)
+        ;;
+      *)
+        # For explicit stable versions, download directly without the installer
+        case "$(uname -ms)" in
+          'Darwin x86_64')
+            target=x86_64-apple-darwin
+            ;;
+          'Darwin arm64')
+            target=aarch64-apple-darwin
+            ;;
+          'Linux x86_64')
+            target=x86_64-unknown-linux-musl
+            ;;
+          *)
+            abort "Unsupported platform: $(uname -ms)"
+            ;;
+        esac
 
-      dune_url="https://nightly.dune.build/stable/${SETUPDUNEVERSION}/${target}"
+        dune_url="https://nightly.dune.build/stable/${SETUPDUNEVERSION}/${target}"
 
-      install_dir="$HOME/.local"
-      bin_dir="${install_dir}/bin"
-      mkdir -p "$bin_dir"
+        install_dir="$HOME/.local"
+        bin_dir="${install_dir}/bin"
+        mkdir -p "$bin_dir"
 
-      tmp_dir="$(mktemp -d)"
-      trap 'rm -rf "$tmp_dir"' EXIT
-      (set -x;
-        curl -fsSL "$dune_url" | tar -xzf - -C "$tmp_dir"
-        mv "$tmp_dir"/*/dune "$bin_dir/"
-        command -v dune
-        dune --version)
-      ;;
-  esac
+        tmp_dir="$(mktemp -d)"
+        (set -x;
+          curl -fsSL "$dune_url" | tar -xzf - -C "$tmp_dir"
+          mv "$tmp_dir"/*/dune "$bin_dir/"
+          command -v dune
+          dune --version)
+        rm -rf "$tmp_dir"
+        ;;
+    esac
+  fi
 
   case "$(dune --version)" in
     3.19*|3.20*|3.21*)
@@ -96,6 +101,35 @@ install-dune() {
       SETUPDUNE_TRACEEXT=csexp
       ;;
   esac
+}
+
+verify-dune-attestation() {
+  DUNE_BINARY="$(command -v dune)"
+  (set -x; gh attestation verify "$DUNE_BINARY" --repo ocaml-dune/binary-distribution)
+}
+
+verify-dune-digest() {
+  DUNE_BINARY="$(command -v dune)"
+  algorithm="${SETUPDUNEDIGEST%%:*}"
+  expected_hash="${SETUPDUNEDIGEST#*:}"
+  case "${algorithm}" in
+    sha256)
+      if command -v sha256sum >/dev/null 2>&1; then
+        actual_hash=$(sha256sum "${DUNE_BINARY}" | cut -d ' ' -f 1)
+      elif command -v shasum >/dev/null 2>&1; then
+        actual_hash=$(shasum -a 256 "${DUNE_BINARY}" | cut -d ' ' -f 1)
+      else
+        abort "sha256sum or shasum is required to verify the dune binary digest"
+      fi
+      ;;
+    *)
+      abort "Digest algorithm '${algorithm}' is not supported. Supported: sha256"
+      ;;
+  esac
+  if [ "${actual_hash}" != "${expected_hash}" ]; then
+    abort "${algorithm}: expected ${expected_hash} but got ${actual_hash} for ${DUNE_BINARY}"
+  fi
+  echo "Digest verified: ${algorithm}:${actual_hash}"
 }
 
 enable-pkg() {
@@ -191,6 +225,14 @@ expand_steps() {
       STEPS="$SETUPDUNESTEPS"
       ;;
   esac
+  # Inject digest verification when a digest is provided
+  if [ -n "${SETUPDUNEDIGEST:-}" ]; then
+    STEPS="${STEPS/install-dune/install-dune verify-dune-digest}"
+  fi
+  # Inject attestation verification when a new binary was downloaded (not from cache)
+  if [ "${SETUPDUNEBINARYCACHEHIT:-}" != "true" ]; then
+    STEPS="${STEPS/install-dune/install-dune verify-dune-attestation}"
+  fi
 }
 
 w() {
@@ -207,6 +249,8 @@ w() {
 main() {
   expand_steps
   w "Install dune" install-dune
+  w "Verify dune attestation" verify-dune-attestation
+  w "Verify dune binary digest" verify-dune-digest
   w "Enable dune package management" enable-pkg
   w "Install GNU patch on macOS" install-gpatch
   w "Install the external dependencies" install-depexts
