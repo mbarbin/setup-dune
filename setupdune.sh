@@ -38,20 +38,56 @@ dune_aux() {
 }
 
 install-dune() {
-  # Whether the version should be explicit set in the installer
   case "$SETUPDUNEVERSION" in
-    nightly|dev)
-      explicit=
+    nightly|dev|latest)
+      # Use the upstream installer for non-stable versions
+      case "$SETUPDUNEVERSION" in
+        nightly|dev)
+          explicit=
+          ;;
+        latest)
+          explicit=y
+          ;;
+      esac
+      (set -x;
+        curl -fsSL https://get.dune.build/install | \
+          sh -s ${explicit:+-- --release "$SETUPDUNEVERSION"}
+        command -v dune
+        dune --version)
       ;;
-    latest|*)
-      explicit=y
+    *)
+      # For explicit stable versions, download directly without the installer
+      case "$(uname -ms)" in
+        'Darwin x86_64')
+          target=x86_64-apple-darwin
+          ;;
+        'Darwin arm64')
+          target=aarch64-apple-darwin
+          ;;
+        'Linux x86_64')
+          target=x86_64-unknown-linux-musl
+          ;;
+        *)
+          abort "Unsupported platform: $(uname -ms)"
+          ;;
+      esac
+
+      dune_url="https://nightly.dune.build/stable/${SETUPDUNEVERSION}/${target}"
+
+      install_dir="$HOME/.local"
+      bin_dir="${install_dir}/bin"
+      mkdir -p "$bin_dir"
+
+      tmp_dir="$(mktemp -d)"
+      trap 'rm -rf "$tmp_dir"' EXIT
+      (set -x;
+        curl -fsSL "$dune_url" | tar -xzf - -C "$tmp_dir"
+        mv "$tmp_dir"/*/dune "$bin_dir/"
+        command -v dune
+        dune --version)
       ;;
   esac
-  (set -x;
-    curl -fsSL https://get.dune.build/install | \
-      sh -s ${explicit:+-- --release "$SETUPDUNEVERSION"}
-    command -v dune
-    dune --version)
+
   case "$(dune --version)" in
     3.19*|3.20*|3.21*)
       SETUPDUNE_TRACEEXT=json
