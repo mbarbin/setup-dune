@@ -76,7 +76,7 @@ install-dune() {
             ;;
         esac
 
-        dune_url="https://nightly.dune.build/stable/${SETUPDUNEVERSION}/${target}"
+        dune_url="https://get.dune.build/${SETUPDUNEVERSION}/${target}/dune-${SETUPDUNEVERSION}-${target}.tar.gz"
 
         install_dir="$HOME/.local"
         bin_dir="${install_dir}/bin"
